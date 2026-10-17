@@ -9,6 +9,8 @@ from app.incidentes.schemas import (
     IncidenteResponse,
 )
 from app.incidentes import service
+from app.auth.dependencies import get_usuario_logado
+from app.auth.models import Usuario
 
 router = APIRouter(
     prefix="/incidentes",
@@ -20,12 +22,13 @@ router = APIRouter(
 def criar_incidente(
     dados: IncidenteCreate,
     db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_logado),
 ):
     return service.criar_incidente(db, dados)
 
 
 @router.get("/", response_model=list[IncidenteResponse])
-def listar_incidentes(db: Session = Depends(get_db)):
+def listar_incidentes(db: Session = Depends(get_db), usuario: Usuario = Depends(get_usuario_logado),):
     return service.listar_incidentes(db)
 
 
@@ -34,6 +37,7 @@ def atualizar_incidente(
     incidente_id: int,
     dados: IncidenteUpdate,
     db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_logado),
 ):
     try:
         return service.atualizar_incidente(db, incidente_id, dados)
@@ -45,6 +49,7 @@ def atualizar_incidente(
 def deletar_incidente(
     incidente_id: int,
     db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_logado),
 ):
     try:
         service.deletar_incidente(db, incidente_id)

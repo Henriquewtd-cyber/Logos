@@ -2,6 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.incidentes.router import router as incidentes_router
+from app.auth.router import router as auth_router
 
 app = FastAPI(
     title="Logos API",
@@ -19,3 +20,4 @@ app.add_middleware(
 )
 
 app.include_router(incidentes_router)
+app.include_router(auth_router)

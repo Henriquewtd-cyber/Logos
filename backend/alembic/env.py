@@ -3,6 +3,7 @@ from alembic import context
 
 from app.core.database import Base, engine
 from app.incidentes import models  # Registra o modelo Incidente
+from app.auth.models import Usuario
 
 config = context.config
 

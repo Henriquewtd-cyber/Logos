@@ -370,7 +370,7 @@ export default function Incidentes() {
                         <p className="mt-2 text-sm text-slate-600">
                             Esta ação não pode ser desfeita.
                         </p>
-                        <p className="mt-3 rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 [overflow-wrap:anywhere]">
+                        <p className="mt-3 rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 [wrap:anywhere]">
                             <span className="font-medium">{toDelete.categoria}</span>
                             {" — "}
                             {toDelete.descricao}

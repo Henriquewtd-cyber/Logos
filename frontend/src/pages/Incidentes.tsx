@@ -7,18 +7,55 @@ import IncidenteForm, {
     type IncidenteValues,
 } from "../components/incidentes/IncidentesForm";
 import IncidentesTable from "../components/incidentes/IncidentesTable";
-import { request, errorMessage } from "../services/api";
-
-/* ---------- Página ---------- */
+import { requisicaoProtegida } from "../services/auth";
 
 type Filtros = { categoria: string; criticidade: string; status: string };
 
 const FILTROS_VAZIOS: Filtros = { categoria: "", criticidade: "", status: "" };
 
+const FILTROS_CONFIG: {
+    campo: keyof Filtros;
+    label: string;
+    todos: string;
+    opcoes: readonly string[];
+}[] = [
+        { campo: "categoria", label: "Categoria", todos: "Todas", opcoes: CATEGORIAS },
+        { campo: "criticidade", label: "Criticidade", todos: "Todas", opcoes: CRITICIDADES },
+        { campo: "status", label: "Status", todos: "Todos", opcoes: STATUS },
+    ];
+
 const CRITICIDADE_RANK: Record<string, number> = { Alta: 0, Média: 1, Baixa: 2 };
 
 const selectClass =
     "w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500";
+
+function mensagemDeErro(error: unknown): string {
+    if (error instanceof TypeError) return "Não foi possível conectar à API.";
+    if (error instanceof Error) return error.message;
+    return "Ocorreu um erro inesperado. Tente novamente.";
+}
+
+// Lê a mensagem de erro do FastAPI (`detail` como texto ou lista de erros).
+async function lerErro(response: Response): Promise<string> {
+    if (response.status === 404) {
+        return "Incidente não encontrado. Ele pode ter sido removido por outro analista; atualize a lista.";
+    }
+    const data = await response.json().catch(() => null);
+    if (typeof data?.detail === "string") return data.detail;
+    if (Array.isArray(data?.detail)) {
+        return data.detail.map((d: { msg: string }) => d.msg).join("; ");
+    }
+    return `A API retornou um erro (${response.status}). Tente novamente.`;
+}
+
+// Campos que mudaram em relação ao original (para o PATCH).
+function alterados(values: IncidenteValues, original: Incidente): Partial<IncidenteValues> {
+    const changes: Partial<IncidenteValues> = {};
+    for (const key of Object.keys(values) as (keyof IncidenteValues)[]) {
+        if (values[key] !== original[key]) changes[key] = values[key];
+    }
+    return changes;
+}
 
 export default function Incidentes() {
     const [incidentes, setIncidentes] = useState<Incidente[]>([]);
@@ -40,11 +77,15 @@ export default function Incidentes() {
         setLoading(true);
         setLoadError(null);
         try {
-            const data = await request<Incidente[]>("/incidentes", { signal });
-            setIncidentes(data ?? []);
+            const response = await requisicaoProtegida("/incidentes", { signal });
+            if (!response.ok) {
+                setLoadError(await lerErro(response));
+                return;
+            }
+            setIncidentes(await response.json());
         } catch (error) {
             if (signal?.aborted) return;
-            setLoadError(errorMessage(error));
+            setLoadError(mensagemDeErro(error));
         } finally {
             if (!signal?.aborted) setLoading(false);
         }
@@ -56,8 +97,7 @@ export default function Incidentes() {
         return () => controller.abort();
     }, [carregar]);
 
-    const filtrosAtivos =
-        filtros.categoria !== "" || filtros.criticidade !== "" || filtros.status !== "";
+    const filtrosAtivos = Object.values(filtros).some((valor) => valor !== "");
 
     // Filtros combinados (E) + ordenação: criticidade alta primeiro, mais recentes antes.
     const visiveis = useMemo(() => {
@@ -75,13 +115,7 @@ export default function Incidentes() {
             });
     }, [incidentes, filtros]);
 
-    function abrirCriacao() {
-        setEditing(null);
-        setFormError(null);
-        setFormOpen(true);
-    }
-
-    function abrirEdicao(incidente: Incidente) {
+    function abrirForm(incidente: Incidente | null) {
         setEditing(incidente);
         setFormError(null);
         setFormOpen(true);
@@ -110,62 +144,67 @@ export default function Incidentes() {
         return () => window.removeEventListener("keydown", onKeyDown);
     }, [formOpen, toDelete, submitting, deleting, fecharForm, fecharExclusao]);
 
-    async function salvar(values: IncidenteValues) {
+    async function handleSubmit(values: IncidenteValues) {
         if (submitting) return;
+
+        // Edição: PATCH só com o que mudou. Sem mudanças, apenas fecha.
+        const body = editing ? alterados(values, editing) : values;
+        if (editing && Object.keys(body).length === 0) {
+            fecharForm();
+            return;
+        }
+
         setSubmitting(true);
         setFormError(null);
         try {
-            if (editing) {
-                // PATCH com apenas os campos alterados
-                const changes: Partial<IncidenteValues> = {};
-                (Object.keys(values) as (keyof IncidenteValues)[]).forEach((key) => {
-                    if (values[key] !== editing[key]) changes[key] = values[key];
-                });
-                if (Object.keys(changes).length === 0) {
-                    fecharForm();
-                    return;
-                }
-                const updated = await request<Incidente>(`/incidentes/${editing.id}`, {
-                    method: "PATCH",
-                    body: JSON.stringify(changes),
-                });
-                if (updated) {
-                    setIncidentes((prev) =>
-                        prev.map((i) => (i.id === updated.id ? updated : i)),
-                    );
-                } else {
-                    await carregar();
-                }
-            } else {
-                const created = await request<Incidente>("/incidentes/", {
-                    method: "POST",
-                    body: JSON.stringify(values),
-                });
-                if (created) {
-                    setIncidentes((prev) => [created, ...prev]);
-                } else {
-                    await carregar();
-                }
+            const response = await requisicaoProtegida(
+                editing ? `/incidentes/${editing.id}` : "/incidentes/",
+                {
+                    method: editing ? "PATCH" : "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body),
+                },
+            );
+
+            if (!response.ok) {
+                setFormError(await lerErro(response));
+                return;
             }
+
+            const salvo: Incidente = await response.json();
+            setIncidentes((prev) =>
+                editing
+                    ? prev.map((i) => (i.id === salvo.id ? salvo : i))
+                    : [salvo, ...prev],
+            );
             fecharForm();
         } catch (error) {
-            setFormError(errorMessage(error));
+            setFormError(mensagemDeErro(error));
         } finally {
             setSubmitting(false);
         }
     }
 
-    async function excluir() {
+    async function handleDelete() {
         if (!toDelete || deleting) return;
         const { id } = toDelete;
+
         setDeleting(true);
         setDeleteError(null);
         try {
-            await request<void>(`/incidentes/${id}`, { method: "DELETE" });
+            const response = await requisicaoProtegida(`/incidentes/${id}`, {
+                method: "DELETE",
+            });
+
+            if (!response.ok) {
+                setDeleteError(await lerErro(response));
+                return;
+            }
+
             setIncidentes((prev) => prev.filter((i) => i.id !== id));
             fecharExclusao();
         } catch (error) {
-            setDeleteError(errorMessage(error));
+            setDeleteError(mensagemDeErro(error));
         } finally {
             setDeleting(false);
         }
@@ -177,7 +216,7 @@ export default function Incidentes() {
                 <h1 className="text-xl font-semibold text-slate-900">Incidentes</h1>
                 <button
                     type="button"
-                    onClick={abrirCriacao}
+                    onClick={() => abrirForm(null)}
                     className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
                 >
                     Novo incidente
@@ -189,75 +228,31 @@ export default function Incidentes() {
                 className="rounded-lg border border-slate-200 bg-white p-4"
             >
                 <div className="grid gap-3 sm:grid-cols-3">
-                    <div>
-                        <label
-                            htmlFor="filtro-categoria"
-                            className="mb-1 block text-xs font-medium text-slate-500"
-                        >
-                            Categoria
-                        </label>
-                        <select
-                            id="filtro-categoria"
-                            value={filtros.categoria}
-                            onChange={(e) =>
-                                setFiltros((f) => ({ ...f, categoria: e.target.value }))
-                            }
-                            className={selectClass}
-                        >
-                            <option value="">Todas</option>
-                            {CATEGORIAS.map((c) => (
-                                <option key={c} value={c}>
-                                    {c}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label
-                            htmlFor="filtro-criticidade"
-                            className="mb-1 block text-xs font-medium text-slate-500"
-                        >
-                            Criticidade
-                        </label>
-                        <select
-                            id="filtro-criticidade"
-                            value={filtros.criticidade}
-                            onChange={(e) =>
-                                setFiltros((f) => ({ ...f, criticidade: e.target.value }))
-                            }
-                            className={selectClass}
-                        >
-                            <option value="">Todas</option>
-                            {CRITICIDADES.map((c) => (
-                                <option key={c} value={c}>
-                                    {c}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label
-                            htmlFor="filtro-status"
-                            className="mb-1 block text-xs font-medium text-slate-500"
-                        >
-                            Status
-                        </label>
-                        <select
-                            id="filtro-status"
-                            value={filtros.status}
-                            onChange={(e) =>
-                                setFiltros((f) => ({ ...f, status: e.target.value }))
-                            }
-                            className={selectClass}
-                        >
-                            <option value="">Todos</option>
-                            {STATUS.map((s) => (
-                                <option key={s} value={s}>
-                                    {s}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                    {FILTROS_CONFIG.map(({ campo, label, todos, opcoes }) => (
+                        <div key={campo}>
+                            <label
+                                htmlFor={`filtro-${campo}`}
+                                className="mb-1 block text-xs font-medium text-slate-500"
+                            >
+                                {label}
+                            </label>
+                            <select
+                                id={`filtro-${campo}`}
+                                value={filtros[campo]}
+                                onChange={(e) =>
+                                    setFiltros((f) => ({ ...f, [campo]: e.target.value }))
+                                }
+                                className={selectClass}
+                            >
+                                <option value="">{todos}</option>
+                                {opcoes.map((opcao) => (
+                                    <option key={opcao} value={opcao}>
+                                        {opcao}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    ))}
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -318,7 +313,7 @@ export default function Incidentes() {
             ) : (
                 <IncidentesTable
                     incidentes={visiveis}
-                    onEdit={abrirEdicao}
+                    onEdit={abrirForm}
                     onDelete={(incidente) => {
                         setDeleteError(null);
                         setToDelete(incidente);
@@ -332,9 +327,9 @@ export default function Incidentes() {
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="form-titulo"
-                        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-5 shadow-lg"
+                        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-5 text-slate-900 shadow-lg"
                     >
-                        <h2 id="form-titulo" className="mb-4 text-lg font-semibold">
+                        <h2 id="form-titulo" className="mb-4 text-lg font-semibold text-slate-900">
                             {editing ? "Editar incidente" : "Novo incidente"}
                         </h2>
                         <IncidenteForm
@@ -342,7 +337,7 @@ export default function Incidentes() {
                             incidente={editing}
                             submitting={submitting}
                             error={formError}
-                            onSubmit={(values) => void salvar(values)}
+                            onSubmit={(values) => void handleSubmit(values)}
                             onCancel={fecharForm}
                         />
                     </div>
@@ -355,7 +350,7 @@ export default function Incidentes() {
                         role="alertdialog"
                         aria-modal="true"
                         aria-labelledby="exclusao-titulo"
-                        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 shadow-lg"
+                        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 text-slate-900 shadow-lg"
                     >
                         <h2 id="exclusao-titulo" className="text-lg font-semibold text-slate-900">
                             Excluir incidente?
@@ -363,7 +358,7 @@ export default function Incidentes() {
                         <p className="mt-2 text-sm text-slate-600">
                             Esta ação não pode ser desfeita.
                         </p>
-                        <p className="mt-3 break-words rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                        <p className="mt-3 wrap-break-words rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
                             <span className="font-medium">{toDelete.categoria}</span>
                             {" — "}
                             {toDelete.descricao}
@@ -387,7 +382,7 @@ export default function Incidentes() {
                             </button>
                             <button
                                 type="button"
-                                onClick={() => void excluir()}
+                                onClick={() => void handleDelete()}
                                 disabled={deleting}
                                 className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
                             >

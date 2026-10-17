@@ -62,7 +62,7 @@ export default function IncidentesTable({
                                 >
                                     {incidente.categoria}
                                 </td>
-                                <td className="max-w-md break-words px-4 py-3 align-top text-slate-700">
+                                <td className="max-w-md wrap-break-words px-4 py-3 align-top text-slate-700">
                                     {incidente.descricao}
                                 </td>
                                 <td className="whitespace-nowrap px-4 py-3 align-top">

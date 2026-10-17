@@ -1,40 +1,45 @@
 import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 
-export type LoginCredentials = {
-    email: string;
-    senha: string;
-};
-
-type LoginProps = {
-    // Deve rejeitar (throw) com uma Error de mensagem legível quando o login falhar.
-    onSubmit: (credentials: LoginCredentials) => Promise<void> | void;
-};
+const API_URL = import.meta.env.VITE_API_URL as string;
 
 const fieldClass =
     "w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 disabled:bg-slate-100";
 
-export default function Login({ onSubmit }: LoginProps) {
-    const [email, setEmail] = useState<string>("");
-    const [senha, setSenha] = useState<string>("");
-    const [submitting, setSubmitting] = useState<boolean>(false);
+export default function Login() {
+    const navigate = useNavigate();
+    const [email, setEmail] = useState("");
+    const [senha, setSenha] = useState("");
+    const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    const isValid = email.trim() !== "" && senha !== "";
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        if (submitting || !isValid) return;
+        if (submitting) return;
 
         setSubmitting(true);
         setError(null);
         try {
-            await onSubmit({ email: email.trim(), senha });
-        } catch (err) {
-            setError(
-                err instanceof Error
-                    ? err.message
-                    : "Não foi possível entrar. Tente novamente.",
-            );
+            const response = await fetch(`${API_URL}/usuarios/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: email.trim(), senha }),
+            });
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                setError(
+                    typeof data?.detail === "string"
+                        ? data.detail
+                        : "Não foi possível entrar. Tente novamente.",
+                );
+                return;
+            }
+
+            localStorage.setItem("token", data.access_token);
+            navigate("/incidentes");
+        } catch {
+            setError("Não foi possível conectar à API.");
         } finally {
             setSubmitting(false);
         }
@@ -108,7 +113,7 @@ export default function Login({ onSubmit }: LoginProps) {
 
                     <button
                         type="submit"
-                        disabled={submitting || !isValid}
+                        disabled={submitting}
                         className="w-full rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
                     >
                         {submitting ? "Entrando…" : "Entrar"}

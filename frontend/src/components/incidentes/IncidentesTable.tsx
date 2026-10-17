@@ -51,18 +51,20 @@ export default function IncidentesTable({
                 <tbody className="divide-y divide-slate-100">
                     {incidentes.map((incidente) => {
                         const isAlta = incidente.criticidade === "Alta";
+                        const isMedia = incidente.criticidade === "Média";
                         return (
                             <tr
                                 key={incidente.id}
-                                className={isAlta ? "bg-red-50/60" : "hover:bg-slate-50"}
+                                className={isAlta ? "bg-red-50/60" : isMedia ? "bg-amber-50/60" : "hover:bg-slate-50"}
+
                             >
                                 <td
-                                    className={`px-4 py-3 align-top font-medium text-slate-900 ${isAlta ? "shadow-[inset_3px_0_0_0_#dc2626]" : ""
+                                    className={`px-4 py-3 align-top font-medium text-slate-900 ${isAlta ? "shadow-[inset_3px_0_0_0_#dc2626]" : isMedia ? "shadow-[inset_3px_0_0_0_#f59e0b]" : ""
                                         }`}
                                 >
                                     {incidente.categoria}
                                 </td>
-                                <td className="max-w-md wrap-break-words px-4 py-3 align-top text-slate-700">
+                                <td className="min-w-48 max-w-md px-4 py-3 align-top text-slate-700 [overflow-wrap:anywhere]">
                                     {incidente.descricao}
                                 </td>
                                 <td className="whitespace-nowrap px-4 py-3 align-top">
@@ -104,6 +106,6 @@ export default function IncidentesTable({
                     })}
                 </tbody>
             </table>
-        </div>
+        </div >
     );
 }

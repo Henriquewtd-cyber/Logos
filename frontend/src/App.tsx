@@ -20,7 +20,11 @@ const router = createBrowserRouter([
       },
       {
         path: "login",
-        element: <Login onSubmit={() => {}} />,
+        element: <Login />,
+      },
+      {
+        path: "/",
+        element: <Incidentes />,
       },
     ],
   },

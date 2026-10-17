@@ -7,6 +7,7 @@ import IncidenteForm, {
     type IncidenteValues,
 } from "../components/incidentes/IncidentesForm";
 import IncidentesTable from "../components/incidentes/IncidentesTable";
+import { ToastContainer, useToast } from "../components/toast";
 import { requisicaoProtegida } from "../services/auth";
 
 type Filtros = { categoria: string; criticidade: string; status: string };
@@ -58,6 +59,8 @@ function alterados(values: IncidenteValues, original: Incidente): Partial<Incide
 }
 
 export default function Incidentes() {
+    const { toasts, addToast, removeToast } = useToast();
+
     const [incidentes, setIncidentes] = useState<Incidente[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -177,6 +180,12 @@ export default function Incidentes() {
                     ? prev.map((i) => (i.id === salvo.id ? salvo : i))
                     : [salvo, ...prev],
             );
+            addToast(
+                editing
+                    ? "Incidente atualizado com sucesso."
+                    : "Incidente cadastrado com sucesso.",
+                "success",
+            );
             fecharForm();
         } catch (error) {
             setFormError(mensagemDeErro(error));
@@ -202,6 +211,7 @@ export default function Incidentes() {
             }
 
             setIncidentes((prev) => prev.filter((i) => i.id !== id));
+            addToast("Incidente excluído com sucesso.", "success");
             fecharExclusao();
         } catch (error) {
             setDeleteError(mensagemDeErro(error));
@@ -212,6 +222,8 @@ export default function Incidentes() {
 
     return (
         <div className="space-y-5">
+            <ToastContainer toasts={toasts} removeToast={removeToast} />
+
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <h1 className="text-xl font-semibold text-slate-900">Incidentes</h1>
                 <button
@@ -358,7 +370,7 @@ export default function Incidentes() {
                         <p className="mt-2 text-sm text-slate-600">
                             Esta ação não pode ser desfeita.
                         </p>
-                        <p className="mt-3 wrap-break-words rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                        <p className="mt-3 rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 [overflow-wrap:anywhere]">
                             <span className="font-medium">{toDelete.categoria}</span>
                             {" — "}
                             {toDelete.descricao}

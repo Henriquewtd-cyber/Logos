@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 export const CATEGORIAS = [
     "Acidente com Veículo",
@@ -16,6 +16,8 @@ export const STATUS = [
     "Fechado",
     "Inconclusivo",
 ] as const;
+
+export const DESCRICAO_MAX = 80;
 
 export type Incidente = {
     id: number;
@@ -67,12 +69,19 @@ export default function IncidenteForm({
             }
             : EMPTY,
     );
+    const descricaoRef = useRef<HTMLTextAreaElement>(null);
 
-    const isValid =
-        values.categoria !== "" &&
-        values.criticidade !== "" &&
-        values.status !== "" &&
-        values.descricao.trim() !== "";
+    // Mensagens da validação nativa do navegador para o que o `required` não cobre:
+    // descrição só com espaços ou acima do limite (ex.: texto antigo já salvo).
+    useEffect(() => {
+        let mensagem = "";
+        if (values.descricao.trim() === "") {
+            mensagem = "Preencha este campo.";
+        } else if (values.descricao.length > DESCRICAO_MAX) {
+            mensagem = `A descrição deve ter no máximo ${DESCRICAO_MAX} caracteres.`;
+        }
+        descricaoRef.current?.setCustomValidity(mensagem);
+    }, [values.descricao]);
 
     function update<K extends keyof IncidenteValues>(
         key: K,
@@ -81,9 +90,10 @@ export default function IncidenteForm({
         setValues((prev) => ({ ...prev, [key]: value }));
     }
 
+    // O navegador só dispara o submit se todos os campos forem válidos.
     function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        if (submitting || !isValid) return;
+        if (submitting) return;
         onSubmit({ ...values, descricao: values.descricao.trim() });
     }
 
@@ -175,13 +185,25 @@ export default function IncidenteForm({
                 </label>
                 <textarea
                     id="incidente-descricao"
+                    ref={descricaoRef}
                     required
                     rows={4}
+                    maxLength={DESCRICAO_MAX}
                     disabled={submitting}
                     value={values.descricao}
                     onChange={(e) => update("descricao", e.target.value)}
                     className={`${fieldClass} resize-y`}
                 />
+                <div className="mt-1 flex justify-between text-xs text-slate-500">
+                    <span>Máximo de {DESCRICAO_MAX} caracteres.</span>
+                    <span
+                        className={
+                            values.descricao.length > DESCRICAO_MAX ? "text-red-700" : ""
+                        }
+                    >
+                        {values.descricao.length}/{DESCRICAO_MAX}
+                    </span>
+                </div>
             </div>
 
             {error && (
@@ -204,7 +226,7 @@ export default function IncidenteForm({
                 </button>
                 <button
                     type="submit"
-                    disabled={submitting || !isValid}
+                    disabled={submitting}
                     className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
                 >
                     {submitting ? "Salvando…" : incidente ? "Salvar alterações" : "Cadastrar"}

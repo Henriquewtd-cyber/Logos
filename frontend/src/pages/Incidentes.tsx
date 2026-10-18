@@ -27,6 +27,13 @@ const FILTROS_CONFIG: {
 
 const CRITICIDADE_RANK: Record<string, number> = { Alta: 0, Média: 1, Baixa: 2 };
 
+const STATUS_RANK: Record<string, number> = {
+    "Aberto": 0,
+    "Em Investigação": 1,
+    "Inconclusivo": 2,
+    "Fechado": 3,
+};
+
 const selectClass =
     "w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500";
 
@@ -38,14 +45,22 @@ function mensagemDeErro(error: unknown): string {
 
 // Lê a mensagem de erro do FastAPI (`detail` como texto ou lista de erros).
 async function lerErro(response: Response): Promise<string> {
+    if (response.status === 409) {
+        return "Este incidente foi alterado por outro analista. Feche e reabra o formulário para carregar os dados atualizados.";
+    }
+
     if (response.status === 404) {
         return "Incidente não encontrado. Ele pode ter sido removido por outro analista; atualize a lista.";
     }
+
     const data = await response.json().catch(() => null);
+
     if (typeof data?.detail === "string") return data.detail;
+
     if (Array.isArray(data?.detail)) {
         return data.detail.map((d: { msg: string }) => d.msg).join("; ");
     }
+
     return `A API retornou um erro (${response.status}). Tente novamente.`;
 }
 
@@ -53,7 +68,7 @@ async function lerErro(response: Response): Promise<string> {
 function alterados(values: IncidenteValues, original: Incidente): Partial<IncidenteValues> {
     const changes: Partial<IncidenteValues> = {};
     for (const key of Object.keys(values) as (keyof IncidenteValues)[]) {
-        if (values[key] !== original[key]) changes[key] = values[key];
+        if (values[key] !== original[key]) Object.assign(changes, { [key]: values[key] });
     }
     return changes;
 }
@@ -80,7 +95,7 @@ export default function Incidentes() {
         setLoading(true);
         setLoadError(null);
         try {
-            const response = await requisicaoProtegida("/incidentes", { signal });
+            const response = await requisicaoProtegida("/incidentes/", { signal });
             if (!response.ok) {
                 setLoadError(await lerErro(response));
                 return;
@@ -111,10 +126,17 @@ export default function Incidentes() {
                     (filtros.criticidade === "" || i.criticidade === filtros.criticidade) &&
                     (filtros.status === "" || i.status === filtros.status),
             )
+            // Filtros combinados (E) + ordenação: criticidade, depois status
+            // (aberto > em investigação > inconclusivo > fechado) e, por fim, mais recentes antes.
             .sort((a, b) => {
-                const ra = CRITICIDADE_RANK[a.criticidade] ?? 3;
-                const rb = CRITICIDADE_RANK[b.criticidade] ?? 3;
-                return ra !== rb ? ra - rb : b.id - a.id;
+                const porCriticidade =
+                    (CRITICIDADE_RANK[a.criticidade] ?? 3) - (CRITICIDADE_RANK[b.criticidade] ?? 3);
+                if (porCriticidade !== 0) return porCriticidade;
+
+                const porStatus = (STATUS_RANK[a.status] ?? 4) - (STATUS_RANK[b.status] ?? 4);
+                if (porStatus !== 0) return porStatus;
+
+                return b.id - a.id;
             });
     }, [incidentes, filtros]);
 
@@ -150,15 +172,20 @@ export default function Incidentes() {
     async function handleSubmit(values: IncidenteValues) {
         if (submitting) return;
 
-        // Edição: PATCH só com o que mudou. Sem mudanças, apenas fecha.
-        const body = editing ? alterados(values, editing) : values;
-        if (editing && Object.keys(body).length === 0) {
+        const mudancas = editing ? alterados(values, editing) : null;
+
+        if (editing && mudancas && Object.keys(mudancas).length === 0) {
             fecharForm();
             return;
         }
 
+        const body = editing
+            ? { ...mudancas, versao: editing.versao }
+            : values;
+
         setSubmitting(true);
         setFormError(null);
+
         try {
             const response = await requisicaoProtegida(
                 editing ? `/incidentes/${editing.id}` : "/incidentes/",
@@ -175,17 +202,20 @@ export default function Incidentes() {
             }
 
             const salvo: Incidente = await response.json();
+
             setIncidentes((prev) =>
                 editing
                     ? prev.map((i) => (i.id === salvo.id ? salvo : i))
                     : [salvo, ...prev],
             );
+
             addToast(
                 editing
                     ? "Incidente atualizado com sucesso."
                     : "Incidente cadastrado com sucesso.",
                 "success",
             );
+
             fecharForm();
         } catch (error) {
             setFormError(mensagemDeErro(error));
@@ -193,7 +223,6 @@ export default function Incidentes() {
             setSubmitting(false);
         }
     }
-
     async function handleDelete() {
         if (!toDelete || deleting) return;
         const { id } = toDelete;
@@ -283,14 +312,7 @@ export default function Incidentes() {
                                 Limpar filtros
                             </button>
                         )}
-                        <button
-                            type="button"
-                            onClick={() => void carregar()}
-                            disabled={loading}
-                            className="rounded border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                        >
-                            {loading ? "Atualizando…" : "Atualizar lista"}
-                        </button>
+
                     </div>
                 </div>
             </section>

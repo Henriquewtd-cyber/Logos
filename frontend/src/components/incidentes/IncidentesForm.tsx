@@ -25,6 +25,7 @@ export type Incidente = {
     criticidade: string;
     descricao: string;
     status: string;
+    versao: number;
 };
 
 export type IncidenteValues = Omit<Incidente, "id">;
@@ -42,6 +43,7 @@ const EMPTY: IncidenteValues = {
     criticidade: "",
     descricao: "",
     status: "Aberto",
+    versao: 0,
 };
 
 const fieldClass =
@@ -66,6 +68,7 @@ export default function IncidenteForm({
                 criticidade: incidente.criticidade,
                 descricao: incidente.descricao,
                 status: incidente.status,
+                versao: incidente.versao,
             }
             : EMPTY,
     );

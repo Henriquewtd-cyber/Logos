@@ -3,6 +3,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class IncidenteBase(BaseModel):
+    versao: int
     categoria: str
     criticidade: str
     descricao: str
@@ -16,6 +17,7 @@ class IncidenteCreate(IncidenteBase):
 
 # Campos opcionais para atualização parcial
 class IncidenteUpdate(BaseModel):
+    versao: int | None = None
     categoria: str | None = None
     criticidade: str | None = None
     descricao: str | None = None

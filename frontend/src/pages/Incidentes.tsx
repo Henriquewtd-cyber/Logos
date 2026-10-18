@@ -334,12 +334,12 @@ export default function Incidentes() {
             )}
 
             {formOpen && (
-                <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4">
+                <div className="overlay-entrada fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4">
                     <div
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="form-titulo"
-                        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-5 text-slate-900 shadow-lg"
+                        className="pagina-entrada max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-5 text-slate-900 shadow-lg"
                     >
                         <h2 id="form-titulo" className="mb-4 text-lg font-semibold text-slate-900">
                             {editing ? "Editar incidente" : "Novo incidente"}
@@ -357,12 +357,12 @@ export default function Incidentes() {
             )}
 
             {toDelete && (
-                <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4">
+                <div className="overlay-entrada fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4">
                     <div
                         role="alertdialog"
                         aria-modal="true"
                         aria-labelledby="exclusao-titulo"
-                        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 text-slate-900 shadow-lg"
+                        className="pagina-entrada max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 text-slate-900 shadow-lg"
                     >
                         <h2 id="exclusao-titulo" className="text-lg font-semibold text-slate-900">
                             Excluir incidente?

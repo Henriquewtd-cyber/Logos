@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 
 const API_URL = import.meta.env.VITE_API_URL as string;
 
+// E-mail de quem libera os acessos (ajuste para o contato real).
+const EMAIL_RESPONSAVEL = "responsavel@gmail.com";
+
 const fieldClass =
     "w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 disabled:bg-slate-100";
 
@@ -46,20 +49,39 @@ export default function Login() {
     }
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8 text-slate-900">
-            <div className="w-full max-w-sm">
-                <div className="mb-6 text-center">
-                    <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-                        Logos
-                    </h1>
-                    <p className="mt-1 text-sm text-slate-500">
-                        Gestão operacional de incidentes logísticos
-                    </p>
-                </div>
+        <div className="mx-auto w-full max-w-3xl py-6 md:py-12">
+            <div className="grid overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-900 shadow-sm md:grid-cols-2">
+                <aside className="order-2 space-y-5 border-t border-slate-200 bg-slate-50 p-6 md:order-1 md:border-r md:border-t-0 md:p-8">
+                    <div>
+                        <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+                            Acesso à plataforma
+                        </h1>
+                        <p className="mt-2 text-sm text-slate-600">
+                            Use suas credenciais para acessar a gestão de incidentes
+                            logísticos.
+                        </p>
+                    </div>
+
+                    <div className="border-t border-slate-200 pt-5">
+                        <p className="text-sm font-medium text-slate-900">
+                            Não tem uma conta?
+                        </p>
+                        <p className="mt-1 text-sm text-slate-600">
+                            Envie um e-mail para{" "}
+                            <a
+                                href={`mailto:${EMAIL_RESPONSAVEL}?subject=${encodeURIComponent("Solicitação de acesso - Logos")}`}
+                                className="font-medium text-slate-900 underline underline-offset-2 hover:text-slate-700 [overflow-wrap:anywhere]"
+                            >
+                                {EMAIL_RESPONSAVEL}
+                            </a>{" "}
+                            solicitando acesso.
+                        </p>
+                    </div>
+                </aside>
 
                 <form
                     onSubmit={handleSubmit}
-                    className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 text-slate-900 shadow-sm"
+                    className="order-1 space-y-4 p-6 md:order-2 md:p-8"
                 >
                     <h2 className="text-lg font-semibold text-slate-900">Entrar</h2>
 

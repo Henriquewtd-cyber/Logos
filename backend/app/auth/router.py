@@ -15,6 +15,8 @@ def login(dados: LoginRequest, db: Session = Depends(get_db),) -> TokenResponse:
     return service.login(db, dados)
 
 # User read endpoint
-@router.get("/user/{usuario_id}", response_model=UsuarioRead)
-def obter_usuario(usuario_id: int, db: Session = Depends(get_db), usuario: Usuario = Depends(get_usuario_logado)) -> UsuarioRead:
-    return service.get_usuario(db, usuario_id)
+@router.get("/me", response_model=UsuarioRead)
+def obter_usuario_logado(db: Session = Depends(get_db), usuario: Usuario = Depends(get_usuario_logado)) -> UsuarioRead:
+    return service.get_usuario(db, usuario.id)
+
+#

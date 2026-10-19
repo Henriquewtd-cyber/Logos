@@ -12,6 +12,12 @@ option {
     @apply cursor-pointer;
 }
 
+html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
 @keyframes pagina-entrada {
     from {
         opacity: 0;

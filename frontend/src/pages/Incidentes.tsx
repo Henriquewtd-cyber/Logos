@@ -250,7 +250,7 @@ export default function Incidentes() {
     }
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-5 min-w-0">
             <ToastContainer toasts={toasts} removeToast={removeToast} />
 
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -345,14 +345,16 @@ export default function Incidentes() {
                     Nenhum incidente corresponde aos filtros selecionados.
                 </p>
             ) : (
-                <IncidentesTable
-                    incidentes={visiveis}
-                    onEdit={abrirForm}
-                    onDelete={(incidente) => {
-                        setDeleteError(null);
-                        setToDelete(incidente);
-                    }}
-                />
+                <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                    <IncidentesTable
+                        incidentes={visiveis}
+                        onEdit={abrirForm}
+                        onDelete={(incidente) => {
+                            setDeleteError(null);
+                            setToDelete(incidente);
+                        }}
+                    />
+                </div>
             )}
 
             {formOpen && (
@@ -361,7 +363,7 @@ export default function Incidentes() {
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="form-titulo"
-                        className="pagina-entrada max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-5 text-slate-900 shadow-lg"
+                        className="pagina-entrada max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-5 text-slate-900 shadow-lg"
                     >
                         <h2 id="form-titulo" className="mb-4 text-lg font-semibold text-slate-900">
                             {editing ? "Editar incidente" : "Novo incidente"}
@@ -384,7 +386,7 @@ export default function Incidentes() {
                         role="alertdialog"
                         aria-modal="true"
                         aria-labelledby="exclusao-titulo"
-                        className="pagina-entrada max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 text-slate-900 shadow-lg"
+                        className="pagina-entrada max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 text-slate-900 shadow-lg"
                     >
                         <h2 id="exclusao-titulo" className="text-lg font-semibold text-slate-900">
                             Excluir incidente?

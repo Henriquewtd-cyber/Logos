@@ -110,7 +110,7 @@ export default function MainLayout() {
                 </div>
             </header>
 
-            <main key={pathname} className="pagina-entrada mx-auto max-w-6xl px-4 py-6">
+            <main key={pathname} className="min-w-0 flex-1 pagina-entrada mx-auto max-w-6xl px-4 py-6">
                 <Outlet />
             </main>
         </div>

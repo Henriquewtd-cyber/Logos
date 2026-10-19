@@ -89,7 +89,7 @@ The structure above is illustrative. Directory names may vary depending on the c
 ### 1. Clone the Repository
 
 ```bash
-git clone <REPOSITORY_URL>
+git clone https://github.com/Henriquewtd-cyber/Logos
 cd Logos
 ```
 
